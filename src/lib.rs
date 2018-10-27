@@ -5,7 +5,7 @@ extern crate yew;
 use std::fmt;
 use yew::prelude::*;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum Mark {
     None,
     X,
@@ -37,6 +37,26 @@ struct Board {
 }
 
 pub struct Game {}
+
+fn calculate_winner(squares: &[Mark]) -> Mark {
+    let lines = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 8],
+        [0, 4, 8],
+        [2, 4, 6],
+    ];
+    for line in lines.into_iter() {
+        let [a, b, c] = line;
+        if squares[*a] == squares[*b] && squares[*a] == squares[*c] {
+            return squares[*a];
+        }
+    }
+    Mark::None
+}
 
 impl fmt::Display for Mark {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -127,6 +147,9 @@ impl Component<()> for Board {
     fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
         match msg {
             BoardMsg::OnSquareClick(i) => {
+                if calculate_winner(&self.squares) != Mark::None {
+                    return false;
+                }
                 self.squares[i] = if self.x_is_next { Mark::X } else { Mark::O };
                 self.x_is_next = !self.x_is_next;
                 true
@@ -137,7 +160,11 @@ impl Component<()> for Board {
 
 impl Renderable<(), Self> for Board {
     fn view(&self) -> Html<(), Self> {
-        let status = format!("Next player: {}", if self.x_is_next { "X" } else { "O" });
+        let winner = calculate_winner(&self.squares);
+        let status = match winner {
+            Mark::None => format!("Next player: {}", if self.x_is_next { "X" } else { "O" }),
+            m => format!("Winner: {}", m),
+        };
 
         html!(
             <div>
