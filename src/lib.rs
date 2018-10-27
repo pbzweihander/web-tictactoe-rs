@@ -2,48 +2,77 @@ extern crate stdweb;
 #[macro_use]
 extern crate yew;
 
+use std::fmt;
 use yew::prelude::*;
 
-struct Square {
-    value: usize,
+enum SquareValue {
+    None,
+    X,
+    O,
 }
 
-#[derive(Default, Clone, PartialEq)]
-struct SquareProps {
-    value: usize,
+enum SquareMsg {
+    ChangeValue(SquareValue),
+}
+
+struct Square {
+    value: SquareValue,
 }
 
 struct Board {}
 
 pub struct Game {}
 
-impl Component<()> for Square {
-    type Message = ();
-    type Properties = SquareProps;
+impl fmt::Display for SquareValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use SquareValue::*;
+        write!(
+            f,
+            "{}",
+            match self {
+                None => "",
+                X => "X",
+                O => "O",
+            }
+        )
+    }
+}
 
-    fn create(props: Self::Properties, _: &mut Env<(), Self>) -> Self {
-        Square { value: props.value }
+impl Component<()> for Square {
+    type Message = SquareMsg;
+    type Properties = ();
+
+    fn create(_: Self::Properties, _: &mut Env<(), Self>) -> Self {
+        Square {
+            value: SquareValue::None,
+        }
     }
 
-    fn update(&mut self, _: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
-        false
+    fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
+        match msg {
+            SquareMsg::ChangeValue(v) => {
+                self.value = v;
+                true
+            }
+        }
     }
 }
 
 impl Renderable<(), Self> for Square {
     fn view(&self) -> Html<(), Self> {
         html!(
-            <button class="square",>
-                { self.value }
+            <button
+                class="square", onclick=|_| SquareMsg::ChangeValue(SquareValue::X),>
+                { &self.value }
             </button>
         )
     }
 }
 
 impl Board {
-    fn render_square(i: usize) -> Html<(), Self> {
+    fn render_square(_: usize) -> Html<(), Self> {
         html!(
-            <Square: value={i}, />
+            <Square: />
         )
     }
 }
