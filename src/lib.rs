@@ -33,6 +33,7 @@ enum BoardMsg {
 
 struct Board {
     squares: [Mark; 9],
+    x_is_next: bool,
 }
 
 pub struct Game {}
@@ -119,13 +120,15 @@ impl Component<()> for Board {
         use Mark::None;
         Board {
             squares: [None, None, None, None, None, None, None, None, None],
+            x_is_next: true,
         }
     }
 
     fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
         match msg {
             BoardMsg::OnSquareClick(i) => {
-                self.squares[i] = Mark::X;
+                self.squares[i] = if self.x_is_next { Mark::X } else { Mark::O };
+                self.x_is_next = !self.x_is_next;
                 true
             }
         }
@@ -134,7 +137,7 @@ impl Component<()> for Board {
 
 impl Renderable<(), Self> for Board {
     fn view(&self) -> Html<(), Self> {
-        let status = "Next player: X";
+        let status = format!("Next player: {}", if self.x_is_next { "X" } else { "O" });
 
         html!(
             <div>
