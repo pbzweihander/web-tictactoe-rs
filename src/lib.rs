@@ -5,27 +5,41 @@ extern crate yew;
 use std::fmt;
 use yew::prelude::*;
 
-enum SquareValue {
+#[derive(Clone, Copy, PartialEq)]
+enum Mark {
     None,
     X,
     O,
 }
 
 enum SquareMsg {
-    ChangeValue(SquareValue),
+    OnClick,
+}
+
+#[derive(Default, Clone, PartialEq)]
+struct SquareProps {
+    value: Mark,
+    onclick: Option<Callback<()>>,
 }
 
 struct Square {
-    value: SquareValue,
+    value: Mark,
+    onclick: Option<Callback<()>>,
 }
 
-struct Board {}
+enum BoardMsg {
+    OnSquareClick(usize),
+}
+
+struct Board {
+    squares: [Mark; 9],
+}
 
 pub struct Game {}
 
-impl fmt::Display for SquareValue {
+impl fmt::Display for Mark {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use SquareValue::*;
+        use Mark::*;
         write!(
             f,
             "{}",
@@ -38,23 +52,38 @@ impl fmt::Display for SquareValue {
     }
 }
 
+impl Default for Mark {
+    fn default() -> Self {
+        Mark::None
+    }
+}
+
 impl Component<()> for Square {
     type Message = SquareMsg;
-    type Properties = ();
+    type Properties = SquareProps;
 
-    fn create(_: Self::Properties, _: &mut Env<(), Self>) -> Self {
+    fn create(props: Self::Properties, _: &mut Env<(), Self>) -> Self {
         Square {
-            value: SquareValue::None,
+            value: props.value,
+            onclick: props.onclick,
         }
     }
 
     fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
         match msg {
-            SquareMsg::ChangeValue(v) => {
-                self.value = v;
+            SquareMsg::OnClick => {
+                if let Some(ref onclick) = self.onclick {
+                    onclick.emit(());
+                }
                 true
             }
         }
+    }
+
+    fn change(&mut self, props: Self::Properties, _: &mut Env<(), Self>) -> ShouldRender {
+        self.value = props.value;
+        self.onclick = props.onclick;
+        true
     }
 }
 
@@ -62,7 +91,9 @@ impl Renderable<(), Self> for Square {
     fn view(&self) -> Html<(), Self> {
         html!(
             <button
-                class="square", onclick=|_| SquareMsg::ChangeValue(SquareValue::X),>
+                class="square",
+                onclick=|_| SquareMsg::OnClick,
+            >
                 { &self.value }
             </button>
         )
@@ -70,23 +101,34 @@ impl Renderable<(), Self> for Square {
 }
 
 impl Board {
-    fn render_square(_: usize) -> Html<(), Self> {
+    fn render_square(&self, i: usize) -> Html<(), Self> {
         html!(
-            <Square: />
+            <Square:
+                value={ self.squares[i] },
+                onclick=move |_| BoardMsg::OnSquareClick(i),
+            />
         )
     }
 }
 
 impl Component<()> for Board {
-    type Message = ();
+    type Message = BoardMsg;
     type Properties = ();
 
     fn create(_: Self::Properties, _: &mut Env<(), Self>) -> Self {
-        Board {}
+        use Mark::None;
+        Board {
+            squares: [None, None, None, None, None, None, None, None, None],
+        }
     }
 
-    fn update(&mut self, _: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
-        false
+    fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
+        match msg {
+            BoardMsg::OnSquareClick(i) => {
+                self.squares[i] = Mark::X;
+                true
+            }
+        }
     }
 }
 
@@ -98,19 +140,19 @@ impl Renderable<(), Self> for Board {
             <div>
                 <div class="status",>{ status }</div>
                 <div class="board-row",>
-                    { Self::render_square(0) }
-                    { Self::render_square(1) }
-                    { Self::render_square(2) }
+                    { self.render_square(0) }
+                    { self.render_square(1) }
+                    { self.render_square(2) }
                 </div>
                 <div class="board-row",>
-                    { Self::render_square(3) }
-                    { Self::render_square(4) }
-                    { Self::render_square(5) }
+                    { self.render_square(3) }
+                    { self.render_square(4) }
+                    { self.render_square(5) }
                 </div>
                 <div class="board-row",>
-                    { Self::render_square(6) }
-                    { Self::render_square(7) }
-                    { Self::render_square(8) }
+                    { self.render_square(6) }
+                    { self.render_square(7) }
+                    { self.render_square(8) }
                 </div>
             </div>
         )
