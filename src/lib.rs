@@ -49,6 +49,7 @@ pub struct Game {
 
 pub enum GameMsg {
     OnSquareClick(usize),
+    JumpTo(usize),
 }
 
 fn calculate_winner(squares: &[Mark]) -> Mark {
@@ -198,6 +199,21 @@ impl Renderable<(), Self> for Board {
     }
 }
 
+impl Game {
+    fn render_move(i: usize) -> Html<(), Self> {
+        let desc = if i == 0 {
+            format!("Go to game start")
+        } else {
+            format!("Go to move #{}", i)
+        };
+        html!(
+            <li>
+                <button onclick=|_| GameMsg::JumpTo(i),>{ desc }</button>
+            </li>
+        )
+    }
+}
+
 impl Component<()> for Game {
     type Message = GameMsg;
     type Properties = ();
@@ -225,6 +241,7 @@ impl Component<()> for Game {
                 self.x_is_next = !self.x_is_next;
                 true
             }
+            GameMsg::JumpTo(i) => true,
         }
     }
 }
@@ -233,6 +250,7 @@ impl Renderable<(), Self> for Game {
     fn view(&self) -> Html<(), Self> {
         let current = self.history.last().unwrap();
         let winner = calculate_winner(current);
+
         let status = match winner {
             Mark::None => format!("Next player: {}", if self.x_is_next { "X" } else { "O" }),
             m => format!("Winner: {}", m),
@@ -248,7 +266,7 @@ impl Renderable<(), Self> for Game {
                 </div>
                 <div class="game-info",>
                     <div>{ status }</div>
-                    /* <ol>{ TODO }</ol> */
+                    <ol>{ for (0..self.history.len()).map(Self::render_move) }</ol>
                 </div>
             </div>
         )
