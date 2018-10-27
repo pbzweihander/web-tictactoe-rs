@@ -12,8 +12,9 @@ enum Mark {
     O,
 }
 
-enum SquareMsg {
-    OnClick,
+struct Square {
+    value: Mark,
+    onclick: Option<Callback<()>>,
 }
 
 #[derive(Default, Clone, PartialEq)]
@@ -22,21 +23,33 @@ struct SquareProps {
     onclick: Option<Callback<()>>,
 }
 
-struct Square {
-    value: Mark,
-    onclick: Option<Callback<()>>,
+enum SquareMsg {
+    OnClick,
+}
+
+struct Board {
+    squares: [Mark; 9],
+    onclick: Option<Callback<usize>>,
+}
+
+#[derive(Default, Clone, PartialEq)]
+struct BoardProps {
+    squares: [Mark; 9],
+    onclick: Option<Callback<usize>>,
 }
 
 enum BoardMsg {
     OnSquareClick(usize),
 }
 
-struct Board {
-    squares: [Mark; 9],
+pub struct Game {
+    history: Vec<[Mark; 9]>,
     x_is_next: bool,
 }
 
-pub struct Game {}
+pub enum GameMsg {
+    OnSquareClick(usize),
+}
 
 fn calculate_winner(squares: &[Mark]) -> Mark {
     let lines = [
@@ -134,41 +147,37 @@ impl Board {
 
 impl Component<()> for Board {
     type Message = BoardMsg;
-    type Properties = ();
+    type Properties = BoardProps;
 
-    fn create(_: Self::Properties, _: &mut Env<(), Self>) -> Self {
-        use Mark::None;
+    fn create(props: Self::Properties, _: &mut Env<(), Self>) -> Self {
         Board {
-            squares: [None, None, None, None, None, None, None, None, None],
-            x_is_next: true,
+            squares: props.squares,
+            onclick: props.onclick,
         }
     }
 
     fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
         match msg {
             BoardMsg::OnSquareClick(i) => {
-                if calculate_winner(&self.squares) != Mark::None {
-                    return false;
+                if let Some(ref onclick) = self.onclick {
+                    onclick.emit(i);
                 }
-                self.squares[i] = if self.x_is_next { Mark::X } else { Mark::O };
-                self.x_is_next = !self.x_is_next;
                 true
             }
         }
+    }
+
+    fn change(&mut self, props: Self::Properties, _: &mut Env<(), Self>) -> ShouldRender {
+        self.squares = props.squares;
+        self.onclick = props.onclick;
+        true
     }
 }
 
 impl Renderable<(), Self> for Board {
     fn view(&self) -> Html<(), Self> {
-        let winner = calculate_winner(&self.squares);
-        let status = match winner {
-            Mark::None => format!("Next player: {}", if self.x_is_next { "X" } else { "O" }),
-            m => format!("Winner: {}", m),
-        };
-
         html!(
             <div>
-                <div class="status",>{ status }</div>
                 <div class="board-row",>
                     { self.render_square(0) }
                     { self.render_square(1) }
@@ -190,29 +199,57 @@ impl Renderable<(), Self> for Board {
 }
 
 impl Component<()> for Game {
-    type Message = ();
+    type Message = GameMsg;
     type Properties = ();
 
     fn create(_: Self::Properties, _: &mut Env<(), Self>) -> Self {
-        Game {}
+        use Mark::None;
+        Game {
+            history: vec![[None, None, None, None, None, None, None, None, None]],
+            x_is_next: true,
+        }
     }
 
-    fn update(&mut self, _: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
-        false
+    fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
+        match msg {
+            GameMsg::OnSquareClick(i) => {
+                let mut squares = {
+                    let current = self.history.last().unwrap();
+                    current.clone()
+                };
+                if calculate_winner(&squares) != Mark::None {
+                    return false;
+                }
+                squares[i] = if self.x_is_next { Mark::X } else { Mark::O };
+                self.history.push(squares);
+                self.x_is_next = !self.x_is_next;
+                true
+            }
+        }
     }
 }
 
 impl Renderable<(), Self> for Game {
     fn view(&self) -> Html<(), Self> {
+        let current = self.history.last().unwrap();
+        let winner = calculate_winner(current);
+        let status = match winner {
+            Mark::None => format!("Next player: {}", if self.x_is_next { "X" } else { "O" }),
+            m => format!("Winner: {}", m),
+        };
+
         html!(
             <div class="game",>
                 <div class="game-board",>
-                    <Board: />
+                    <Board:
+                        squares={ current },
+                        onclick=|i| GameMsg::OnSquareClick(i),
+                    />
                 </div>
-                /* <div class="game-info",>
-                    <div>{/* status */}</div>
-                    <ol>{/* TODO */}</ol>
-                </div> */
+                <div class="game-info",>
+                    <div>{ status }</div>
+                    /* <ol>{ TODO }</ol> */
+                </div>
             </div>
         )
     }
