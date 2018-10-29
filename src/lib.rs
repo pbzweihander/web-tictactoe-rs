@@ -5,6 +5,10 @@ extern crate yew;
 use std::fmt;
 use yew::prelude::*;
 
+pub trait Printer {
+    fn print(&mut self, data: &str);
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mark {
     None,
@@ -93,18 +97,18 @@ impl Default for Mark {
     }
 }
 
-impl Component<()> for Square {
+impl<CTX: 'static> Component<CTX> for Square {
     type Message = SquareMsg;
     type Properties = SquareProps;
 
-    fn create(props: Self::Properties, _: &mut Env<(), Self>) -> Self {
+    fn create(props: Self::Properties, _: &mut Env<CTX, Self>) -> Self {
         Square {
             value: props.value,
             onclick: props.onclick,
         }
     }
 
-    fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
+    fn update(&mut self, msg: Self::Message, _: &mut Env<CTX, Self>) -> ShouldRender {
         match msg {
             SquareMsg::OnClick => {
                 if let Some(ref onclick) = self.onclick {
@@ -115,15 +119,15 @@ impl Component<()> for Square {
         }
     }
 
-    fn change(&mut self, props: Self::Properties, _: &mut Env<(), Self>) -> ShouldRender {
+    fn change(&mut self, props: Self::Properties, _: &mut Env<CTX, Self>) -> ShouldRender {
         self.value = props.value;
         self.onclick = props.onclick;
         true
     }
 }
 
-impl Renderable<(), Self> for Square {
-    fn view(&self) -> Html<(), Self> {
+impl<CTX: 'static> Renderable<CTX, Self> for Square {
+    fn view(&self) -> Html<CTX, Self> {
         html!(
             <button
                 class="square",
@@ -136,7 +140,7 @@ impl Renderable<(), Self> for Square {
 }
 
 impl Board {
-    fn render_square(&self, i: usize) -> Html<(), Self> {
+    fn render_square<CTX: 'static>(&self, i: usize) -> Html<CTX, Self> {
         html!(
             <Square:
                 value={ self.squares[i] },
@@ -146,18 +150,18 @@ impl Board {
     }
 }
 
-impl Component<()> for Board {
+impl<CTX: 'static> Component<CTX> for Board {
     type Message = BoardMsg;
     type Properties = BoardProps;
 
-    fn create(props: Self::Properties, _: &mut Env<(), Self>) -> Self {
+    fn create(props: Self::Properties, _: &mut Env<CTX, Self>) -> Self {
         Board {
             squares: props.squares,
             onclick: props.onclick,
         }
     }
 
-    fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
+    fn update(&mut self, msg: Self::Message, _: &mut Env<CTX, Self>) -> ShouldRender {
         match msg {
             BoardMsg::OnSquareClick(i) => {
                 if let Some(ref onclick) = self.onclick {
@@ -168,15 +172,15 @@ impl Component<()> for Board {
         }
     }
 
-    fn change(&mut self, props: Self::Properties, _: &mut Env<(), Self>) -> ShouldRender {
+    fn change(&mut self, props: Self::Properties, _: &mut Env<CTX, Self>) -> ShouldRender {
         self.squares = props.squares;
         self.onclick = props.onclick;
         true
     }
 }
 
-impl Renderable<(), Self> for Board {
-    fn view(&self) -> Html<(), Self> {
+impl<CTX: 'static> Renderable<CTX, Self> for Board {
+    fn view(&self) -> Html<CTX, Self> {
         html!(
             <div>
                 <div class="board-row",>
@@ -200,7 +204,7 @@ impl Renderable<(), Self> for Board {
 }
 
 impl Game {
-    fn render_move(i: usize) -> Html<(), Self> {
+    fn render_move<CTX: Printer + 'static>(i: usize) -> Html<CTX, Self> {
         let desc = if i == 0 {
             format!("Go to game start")
         } else {
@@ -214,11 +218,11 @@ impl Game {
     }
 }
 
-impl Component<()> for Game {
+impl<CTX: Printer + 'static> Component<CTX> for Game {
     type Message = GameMsg;
     type Properties = ();
 
-    fn create(_: Self::Properties, _: &mut Env<(), Self>) -> Self {
+    fn create(_: Self::Properties, _: &mut Env<CTX, Self>) -> Self {
         use Mark::None;
         Game {
             history: vec![[None, None, None, None, None, None, None, None, None]],
@@ -226,7 +230,7 @@ impl Component<()> for Game {
         }
     }
 
-    fn update(&mut self, msg: Self::Message, _: &mut Env<(), Self>) -> ShouldRender {
+    fn update(&mut self, msg: Self::Message, _: &mut Env<CTX, Self>) -> ShouldRender {
         match msg {
             GameMsg::OnSquareClick(i) => {
                 let mut squares = {
@@ -241,13 +245,13 @@ impl Component<()> for Game {
                 self.x_is_next = !self.x_is_next;
                 true
             }
-            GameMsg::JumpTo(i) => true,
+            GameMsg::JumpTo(_) => true,
         }
     }
 }
 
-impl Renderable<(), Self> for Game {
-    fn view(&self) -> Html<(), Self> {
+impl<CTX: Printer + 'static> Renderable<CTX, Self> for Game {
+    fn view(&self) -> Html<CTX, Self> {
         let current = self.history.last().unwrap();
         let winner = calculate_winner(current);
 
