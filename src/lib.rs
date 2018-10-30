@@ -245,7 +245,7 @@ impl<CTX: Printer + 'static> Component<CTX> for Game {
                     let current = self.history.last().unwrap();
                     current.clone()
                 };
-                if calculate_winner(&squares) != Mark::None {
+                if squares[i] != Mark::None || calculate_winner(&squares) != Mark::None {
                     return false;
                 }
                 squares[i] = if self.x_is_next { Mark::X } else { Mark::O };
