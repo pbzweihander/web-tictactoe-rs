@@ -49,6 +49,7 @@ enum BoardMsg {
 pub struct Game {
     history: Vec<[Mark; 9]>,
     x_is_next: bool,
+    step_number: usize,
 }
 
 pub enum GameMsg {
@@ -216,6 +217,11 @@ impl Game {
             </li>
         )
     }
+
+    fn jump_to(&mut self, step: usize) {
+        self.step_number = step;
+        self.x_is_next = (step % 2) == 0;
+    }
 }
 
 impl<CTX: Printer + 'static> Component<CTX> for Game {
@@ -227,6 +233,7 @@ impl<CTX: Printer + 'static> Component<CTX> for Game {
         Game {
             history: vec![[None, None, None, None, None, None, None, None, None]],
             x_is_next: true,
+            step_number: 0,
         }
     }
 
@@ -234,6 +241,7 @@ impl<CTX: Printer + 'static> Component<CTX> for Game {
         match msg {
             GameMsg::OnSquareClick(i) => {
                 let mut squares = {
+                    self.history.truncate(self.step_number + 1);
                     let current = self.history.last().unwrap();
                     current.clone()
                 };
@@ -241,19 +249,23 @@ impl<CTX: Printer + 'static> Component<CTX> for Game {
                     return false;
                 }
                 squares[i] = if self.x_is_next { Mark::X } else { Mark::O };
+                self.step_number = self.history.len();
                 self.history.push(squares);
                 self.x_is_next = !self.x_is_next;
                 true
             }
-            GameMsg::JumpTo(_) => true,
+            GameMsg::JumpTo(i) => {
+                self.jump_to(i);
+                true
+            }
         }
     }
 }
 
 impl<CTX: Printer + 'static> Renderable<CTX, Self> for Game {
     fn view(&self) -> Html<CTX, Self> {
-        let current = self.history.last().unwrap();
-        let winner = calculate_winner(current);
+        let current = self.history[self.step_number];
+        let winner = calculate_winner(&current);
 
         let status = match winner {
             Mark::None => format!("Next player: {}", if self.x_is_next { "X" } else { "O" }),
